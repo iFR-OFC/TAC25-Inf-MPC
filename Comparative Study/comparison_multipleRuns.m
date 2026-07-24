@@ -23,7 +23,7 @@ clear
 
 % generate true to generate tikz code using matlab2tikz (matlab2tikz must
 % be on MATLAB path)
-genTikz = false;
+genTikz = true;
 
 % load some conversion function for attitute parameterization
 addpath("helperFunc\")
@@ -43,10 +43,13 @@ load polyControl_comparison_3_runs.mat
 % load data from CBF-CLF-QP law
 load CBF_CLF_QP_comparison_3_runs.mat
 
+% load data for horizon-one
+load horOneMPC_comparison_3_runs.mat
+
 % put all methods into one cell
-x_sol_all = {x_sol_vec_infMPC, x_sol_vec_fullMPC, x_sol_vec_fullMPC_RTI, x_sol_vec_poly, x_sol_vec_CBF_CLF};
-u_sol_all = {u_sol_vec_infMPC, u_sol_vec_fullMPC, u_sol_vec_fullMPC_RTI, u_sol_vec_poly, u_sol_vec_CBF_CLF};
-iter_all  = {iter_conv_inf, iter_all_fullMPC, iter_all_fullMPC_RTI, iter_conv_poly_inf, iter_conv_CBF_CLF};
+x_sol_all = {x_sol_vec_infMPC, x_sol_vec_fullMPC, x_sol_vec_fullMPC_RTI, x_sol_vec_poly, x_sol_vec_CBF_CLF,x_sol_vechorOneMPC};
+u_sol_all = {u_sol_vec_infMPC, u_sol_vec_fullMPC, u_sol_vec_fullMPC_RTI, u_sol_vec_poly, u_sol_vec_CBF_CLF,u_sol_vechorOneMPC};
+iter_all  = {iter_conv_inf, iter_all_fullMPC, iter_all_fullMPC_RTI, iter_conv_poly_inf, iter_conv_CBF_CLF,iter_convhorOne};
 
 
 numRuns = length(x_sol_all);
@@ -65,6 +68,7 @@ convergenceTime_full(jj)        = t(iter_all_fullMPC{jj});
 convergenceTime_full_RTI(jj)    = t(iter_all_fullMPC_RTI{jj});
 convergenceTime_poly(jj)        = t(iter_conv_poly_inf{jj});
 convergenceTime_CBF_CLF_QP(jj)  = t(iter_conv_CBF_CLF{jj});
+convergenceTime_horOne(jj)          = t(iter_convhorOne{jj});
 
 % fprintf('------------------------------------------- \n')
 
@@ -209,6 +213,31 @@ end
 stageCost_CBF_CLF(jj) = trapz(linspace( 0,t(iter_conv_CBF_CLF{jj}),length(cost_per_step)), cost_per_step);
 
 
+
+
+
+% ---------- Horizon-one ----------
+% We have to bring back MRP
+D = diag([pi/180,pi/180,pi/180]);
+x_sol_vec_horOne_MRP =  x_sol_vechorOneMPC{jj};
+
+for j = 1:size(x_sol_vec_horOne_MRP,2)
+    x_sol_vec_horOne_MRP(4:6,j) = Euler1232MRP(D*x_sol_vec_horOne_MRP(4:6,j));
+end
+
+
+% Preallocate cost array for each time step
+cost_per_step = zeros(1, iter_convhorOne{jj});
+
+% Compute L for each time step individually
+for k = 1:iter_convhorOne{jj}-1
+    cost_per_step(k) = L(x_sol_vec_horOne_MRP(:,k), u_sol_vechorOneMPC{jj}(:,k));
+end
+
+% Compute total cost using trapezoidal integration
+stageCost_horOne(jj) = trapz(linspace( 0,t(iter_convhorOne{jj}),length(cost_per_step)), cost_per_step);
+
+
 % fprintf('------------------------------------------- \n')
 % fprintf('Int. stage cost inf.MPC: %f  \n',stageCost_inf(jj))
 % fprintf('Int. stage cost NMPC (IPOPT): %f  \n',stageCost_full(jj))
@@ -273,14 +302,17 @@ fill([xLimits(1) xLimits(2) xLimits(2) xLimits(1)], [yDashed yDashed maxy maxy],
 axis([0 t(max([iter_all_numArr(jj,:)])) miny maxy])
 
 % custom legend
-h = zeros(5, 1);
+h = zeros(6, 1);
 h(1) = plot(NaN,NaN,'-','Color',colors(1,:));
 h(2) = plot(NaN,NaN,'-','Color',colors(2,:));
 h(3) = plot(NaN,NaN,'-','Color',colors(3,:));
 h(4) = plot(NaN,NaN,'-','Color',colors(4,:));
 h(5) = plot(NaN,NaN,'-','Color',colors(5,:));
+h(6) = plot(NaN,NaN,'-','Color',colors(6,:));
 
-legend(h, 'Inf.MPC','NMPC (IPOPT)','RTI','Poly. Law','CBF-CLF')
+legend(h, 'Inf.MPC','NMPC (IPOPT)','RTI','Poly. Law','CBF-CLF','horizon-one')
+
+
 
 % ------ Roll angle ------
 subplot(312)
@@ -296,14 +328,17 @@ ylabel([Euler_names{1} ' [deg]']);
 grid on;
 
 % custom legend
-h = zeros(5, 1);
+h = zeros(6, 1);
 h(1) = plot(NaN,NaN,'-','Color',colors(1,:));
 h(2) = plot(NaN,NaN,'-','Color',colors(2,:));
 h(3) = plot(NaN,NaN,'-','Color',colors(3,:));
 h(4) = plot(NaN,NaN,'-','Color',colors(4,:));
 h(5) = plot(NaN,NaN,'-','Color',colors(5,:));
+h(6) = plot(NaN,NaN,'-','Color',colors(6,:));
 
-legend(h, 'Inf.MPC','NMPC (IPOPT)','RTI','Poly. Law','CBF-CLF')
+legend(h, 'Inf.MPC','NMPC (IPOPT)','RTI','Poly. Law','CBF-CLF','horizon-one')
+
+
 
 axis([0 t(max([iter_all_numArr(jj,:)])) -40 120])
 
@@ -335,14 +370,15 @@ axis([0 t(max([iter_all_numArr(jj,:)])) miny maxy])
 
 % custom legend
 % custom legend
-h = zeros(5, 1);
+h = zeros(6, 1);
 h(1) = plot(NaN,NaN,'-','Color',colors(1,:));
 h(2) = plot(NaN,NaN,'-','Color',colors(2,:));
 h(3) = plot(NaN,NaN,'-','Color',colors(3,:));
 h(4) = plot(NaN,NaN,'-','Color',colors(4,:));
 h(5) = plot(NaN,NaN,'-','Color',colors(5,:));
+h(6) = plot(NaN,NaN,'-','Color',colors(6,:));
 
-legend(h, 'Inf.MPC','NMPC (IPOPT)','RTI','Poly. Law','CBF-CLF')
+legend(h, 'Inf.MPC','NMPC (IPOPT)','RTI','Poly. Law','CBF-CLF','horizon-one')
 
 
 if genTikz && jj == 1
@@ -357,31 +393,16 @@ elseif genTikz && jj == 3
 end
 
 
-%% Evaluate aggregated table
-conv_Time       = [convergenceTime_infinite(jj); convergenceTime_full(jj); convergenceTime_full_RTI(jj); convergenceTime_poly(jj); convergenceTime_CBF_CLF_QP(jj)];          
-Int_stage_cost  = [stageCost_inf(jj); stageCost_full(jj); stageCost_full_RTI(jj); stageCost_poly(jj); stageCost_CBF_CLF(jj)]; 
-comp_Time_mean      = [meanSolveTime_infMPC; meanSolveTime_full; meanSolveTime_full_RTI; meanSolveTime_poly; meanSolveTime_CBF_CLF]; 
-comp_Time_worst     = [maxSolveTime_infMPC; maxSolveTime_full; maxSolveTime_full_RTI; maxSolveTime_poly; maxSolveTime_CBF_CLF]; 
-% Row names
-rowNames = {'Inf.MPC','NMPC (IPOPT)','RTI','Poly. Law','CBF-CLF'};
-
-% Create the table
-T = table(conv_Time, comp_Time_mean, comp_Time_worst, Int_stage_cost, 'RowNames', rowNames);
-
-% Display the table
-disp(T);
-
-
 end
 
 
 %% Evaluate aggregated table
-avg_conv_Time       = [mean(convergenceTime_infinite); mean(convergenceTime_full); mean(convergenceTime_full_RTI); mean(convergenceTime_poly); mean(convergenceTime_CBF_CLF_QP)];          
-avg_Int_stage_cost  = [mean(stageCost_inf); mean(stageCost_full); mean(stageCost_full_RTI); mean(stageCost_poly); mean(stageCost_CBF_CLF)]; 
-comp_Time_mean      = [meanSolveTime_infMPC; meanSolveTime_full; meanSolveTime_full_RTI; meanSolveTime_poly; meanSolveTime_CBF_CLF]; 
-comp_Time_worst     = [maxSolveTime_infMPC; maxSolveTime_full; maxSolveTime_full_RTI; maxSolveTime_poly; maxSolveTime_CBF_CLF]; 
+avg_conv_Time       = [mean(convergenceTime_infinite); mean(convergenceTime_full); mean(convergenceTime_full_RTI); mean(convergenceTime_poly); mean(convergenceTime_CBF_CLF_QP);mean(convergenceTime_horOne)];          
+avg_Int_stage_cost  = [mean(stageCost_inf); mean(stageCost_full); mean(stageCost_full_RTI); mean(stageCost_poly); mean(stageCost_CBF_CLF);mean(stageCost_horOne)]; 
+comp_Time_mean      = [meanSolveTime_infMPC; meanSolveTime_full; meanSolveTime_full_RTI; meanSolveTime_poly; meanSolveTime_CBF_CLF;meanSolveTimehorOneMPC]; 
+comp_Time_worst     = [maxSolveTime_infMPC; maxSolveTime_full; maxSolveTime_full_RTI; maxSolveTime_poly; maxSolveTime_CBF_CLF;maxSolveTimehorOneMPC]; 
 % Row names
-rowNames = {'Inf.MPC','NMPC (IPOPT)','RTI','Poly. Law','CBF-CLF'};
+rowNames = {'Inf.MPC','NMPC (IPOPT)','RTI','Poly. Law','CBF-CLF','horizon-one'};
 
 % Create the table
 T = table(avg_conv_Time, comp_Time_mean, comp_Time_worst, avg_Int_stage_cost, 'RowNames', rowNames);
