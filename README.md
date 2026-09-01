@@ -91,6 +91,7 @@ Comparison_singleAxis/
 ├── full_MPC_alpaqa    # Full-horizon NMPC simulation using alpaqa solver (or fatrop)
 ├── full_MPC_IPOPT     # Full-horizon NMPC simulation using IPOPT solver
 ├── helperFunc         # Folder that contains helper functions (e.g. MRP→Euler)
+├── horizon-one        # Simulation of the horizon-one MPC
 ├── inf_MPC            # Synthesis and simulation of inf.MPC
 ├── poly_controlLaw    # Simulation of the poly. control law from proposed approach
 └── RTI_full_MPC       # Full-horizon NMPC simulation using custom RTI solver
